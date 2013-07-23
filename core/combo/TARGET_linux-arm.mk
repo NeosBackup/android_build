@@ -43,7 +43,7 @@ include $(TARGET_ARCH_SPECIFIC_MAKEFILE)
 
 # You can set TARGET_TOOLS_PREFIX to get gcc from somewhere else
 ifeq ($(strip $(TARGET_TOOLS_PREFIX)),)
-TARGET_TOOLCHAIN_ROOT := prebuilts/gcc/$(HOST_PREBUILT_TAG)/arm/arm-linux-androideabi-4.6
+TARGET_TOOLCHAIN_ROOT := prebuilts/gcc/$(HOST_PREBUILT_TAG)/arm/arm-linux-androideabi-$(TARGET_GCC_VERSION)
 TARGET_TOOLS_PREFIX := $(TARGET_TOOLCHAIN_ROOT)/bin/arm-linux-androideabi-
 endif
 
@@ -66,20 +66,43 @@ endif
 
 TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
-TARGET_arm_CFLAGS :=    -O2 \
+TARGET_arm_CFLAGS :=    -Os \
+                        -ffloat-store \
+                        -fforce-addr \
+                        -fgcse-after-reload \
+                        -fmodulo-sched \
+                        -fmodulo-sched-allow-regmoves \
+                        -fno-branch-count-reg \
+                        -fno-default-inline \
+                        -fno-expensive-optimizations \
+                        -fno-inline-functions \
+                        -fno-tree-vectorize \
+                        -fno-unswitch-loops \
+                        -fno-vect-cost-model \
+                        -fno-zero-initialized-in-bss \
                         -fomit-frame-pointer \
-                        -fstrict-aliasing    \
-                        -funswitch-loops
+                        -fpredictive-commoning \
+                        -frename-registers \
+                        -fstrict-aliasing \
+                        -Werror=strict-aliasing \
+                        -Wstrict-aliasing=3
 
 # Modules can choose to compile some source as thumb. As
 # non-thumb enabled targets are supported, this is treated
 # as a 'hint'. If thumb is not enabled, these files are just
 # compiled as ARM.
 ifeq ($(ARCH_ARM_HAVE_THUMB_SUPPORT),true)
-TARGET_thumb_CFLAGS :=  -mthumb \
-                        -Os \
+TARGET_thumb_CFLAGS :=  -Os \
+                        -fno-inline-functions \
+                        -fno-tree-vectorize \
+                        -fno-unswitch-loops \
                         -fomit-frame-pointer \
-                        -fno-strict-aliasing
+                        -fpredictive-commoning \
+                        -frename-registers \
+                        -fstrict-aliasing \
+                        -mthumb \
+                        -Werror=strict-aliasing \
+                        -Wstrict-aliasing=3
 else
 TARGET_thumb_CFLAGS := $(TARGET_arm_CFLAGS)
 endif
@@ -122,11 +145,11 @@ android_config_h := $(call select-android-config-h,linux-arm)
 TARGET_ANDROID_CONFIG_CFLAGS := -include $(android_config_h) -I $(dir $(android_config_h))
 TARGET_GLOBAL_CFLAGS += $(TARGET_ANDROID_CONFIG_CFLAGS)
 
-# This warning causes dalvik not to build with gcc 4.6.x and -Werror.
+# This warning causes dalvik not to build with gcc 4.x and -Werror.
 # We cannot turn it off blindly since the option is not available
 # in gcc-4.4.x.  We also want to disable sincos optimization globally
 # by turning off the builtin sin function.
-ifneq ($(filter 4.6 4.6.%, $(shell $(TARGET_CC) --version)),)
+ifneq ($(filter 4.6 4.6.% 4.7 4.7.% 4.8 4.8.% 4.9 4.9.%, $(shell $(TARGET_CC) --version)),)
 TARGET_GLOBAL_CFLAGS += -Wno-unused-but-set-variable -fno-builtin-sin \
 			-fno-strict-volatile-bitfields
 endif
@@ -164,11 +187,13 @@ TARGET_GLOBAL_CPPFLAGS += -fvisibility-inlines-hidden
 # More flags/options can be added here
 TARGET_RELEASE_CFLAGS := \
 			-DNDEBUG \
-			-g \
-			-Wstrict-aliasing=2 \
 			-fgcse-after-reload \
 			-frerun-cse-after-loop \
-			-frename-registers
+			-frename-registers \
+			-fstrict-aliasing \
+			-g \
+			-Werror=strict-aliasing \
+			-Wstrict-aliasing=3
 
 libc_root := bionic/libc
 libm_root := bionic/libm
